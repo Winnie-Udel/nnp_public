@@ -57,9 +57,18 @@ __global__ void forwardKernel(
     int outputSize,
     int activation
 ) {
+    // Shared memory for input vector, dynamic allocation 
+    extern __shared__ float sharedInput[];
+
+    int tId = threadIdx.x;
     // Index for output feature 
     // Independent computation with multiple blocks
     int j = blockIdx.x * blockDim.x + threadIdx.x; 
+
+    for (int i = tId; i < inputSize; i+= blockDim.x){
+        sharedInput[i] = input[i]
+    }
+    __syncthreads();
 
     if (j < outputSize) {
         // Initialize with bias
@@ -67,7 +76,7 @@ __global__ void forwardKernel(
 
         // Matrix-vector multiplication
         for (int i = 0; i < inputSize; i++) {
-            sum += input[i] * weights[i * outputSize + j];
+            sum += sharedInput[i] * weights[i * outputSize + j];
         }
 
         // Apply activation function 
