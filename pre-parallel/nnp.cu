@@ -100,7 +100,7 @@ void train_model(MODEL* model) {
     cudaMemcpy(d_W3, model->W3, H2*CLASSES*sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_b3, model->b3, CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
-    int threadPerBlock=256;
+    int blockSize=256;
     dim3 block2D(16,16);
 
     for (int epoch=0; epoch<EPOCHS; epoch++) {
@@ -112,11 +112,11 @@ void train_model(MODEL* model) {
             cudaMemcpy(d_label, train_label[n], CLASSES*sizeof(float), cudaMemcpyHostToDevice);
 
             // Forward
-            forwardKernel<<< (H1+255)/256, threadPerBlock, SIZE*sizeof(float)>>>(d_input, d_W1, d_b1, d_h1, SIZE, H1, 1); 
+            forwardKernel<<< (H1+(blockSize-1))/blockSize, blockSize, SIZE*sizeof(float)>>>(d_input, d_W1, d_b1, d_h1, SIZE, H1, 1); 
             cudaMemcpy(d_h1a, d_h1, H1*sizeof(float), cudaMemcpyDeviceToDevice);
-            forwardKernel<<< (H2+255)/256, threadPerBlock H1*sizeof(float)>>>(d_h1a, d_W2, d_b2, d_h2, H1, H2, 1);
+            forwardKernel<<< (H2+(blockSize-1))/blockSize, blockSize H1*sizeof(float)>>>(d_h1a, d_W2, d_b2, d_h2, H1, H2, 1);
             cudaMemcpy(d_h2a, d_h2, H2*sizeof(float), cudaMemcpyDeviceToDevice);
-            forwardKernel<<< (CLASSES+255)/256, threadPerBlock, H2*sizeof(float)>>>(d_h2a, d_W3, d_b3, d_out, H2, CLASSES, 0);
+            forwardKernel<<< (CLASSES+(blockSize-1))/blockSize, blockSize, H2*sizeof(float)>>>(d_h2a, d_W3, d_b3, d_out, H2, CLASSES, 0);
             softMaxKernel<<<1, CLASSES>>>(d_out, d_outa, CLASSES); 
 
             cudaDeviceSynchronize();
@@ -129,23 +129,23 @@ void train_model(MODEL* model) {
                 loss -= train_label[n][k]*logf(h_outa[k]+1e-8f);
             }
 
-            // Backprop
-            firstBackPropKernel<<< (CLASSES+255)/256, threadPerBlock >>>(d_label, d_outa, d_delta3, CLASSES); 
-            backPropKernel<<< (H2+255)/256, threadPerBlock >>>(d_h2a, d_W3, d_delta3, d_delta2, H2, CLASSES); 
-            backPropKernel<<< (H1+255)/256, threadPerBlock >>>(d_h1a, d_W2, d_delta2, d_delta1, H1, H2); 
+            // Backprop 
+            firstBackPropKernel<<< (CLASSES+(blockSize-1))/blockSize, blockSize >>>(d_label, d_outa, d_delta3, CLASSES); 
+            backPropKernel<<< (H2+(blockSize-1))/blockSize, blockSize >>>(d_h2a, d_W3, d_delta3, d_delta2, H2, CLASSES); 
+            backPropKernel<<< (H1+(blockSize-1))/blockSize, blockSize >>>(d_h1a, d_W2, d_delta2, d_delta1, H1, H2); 
 
             // Update
             dim3 gridW3( (H2+15)/16, (CLASSES+15)/16 );
             updateWeightsKernel<<<gridW3, block2D>>>(d_W3, d_delta3, d_h2a, LR, H2, CLASSES); 
-            updateBiasKernel<<< (CLASSES+255)/256,threadPerBlock >>>(d_b3,d_delta3,LR,CLASSES); 
+            updateBiasKernel<<< (CLASSES+(blockSize-1))/blockSize,blockSize >>>(d_b3,d_delta3,LR,CLASSES); 
 
             dim3 gridW2( (H1+15)/16, (H2+15)/16 );
             updateWeightsKernel<<<gridW2, block2D>>>(d_W2,d_delta2,d_h1a,LR,H1,H2); 
-            updateBiasKernel<<< (H2+255)/256,threadPerBlock >>>(d_b2,d_delta2,LR,H2);
+            updateBiasKernel<<< (H2+(blockSize-1))/blockSize,blockSize >>>(d_b2,d_delta2,LR,H2);
 
             dim3 gridW1( (SIZE+15)/16, (H1+15)/16 );
             updateWeightsKernel<<<gridW1, block2D>>>(d_W1,d_delta1,d_input,LR,SIZE,H1);
-            updateBiasKernel<<< (H1+255)/256,threadPerBlock >>>(d_b1,d_delta1,LR,H1); 
+            updateBiasKernel<<< (H1+(blockSize-1))/blockSize,blockSize >>>(d_b1,d_delta1,LR,H1); 
         }
 
         cudaDeviceSynchronize();
