@@ -66,7 +66,7 @@ __global__ void forwardKernel(
     int j = blockIdx.x * blockDim.x + threadIdx.x; 
 
     for (int i = tId; i < inputSize; i+= blockDim.x){
-        sharedInput[i] = input[i]
+        sharedInput[i] = input[i];
     }
     __syncthreads();
 
@@ -102,24 +102,32 @@ __global__ void softMaxKernel(
     float *out, 
     int len
 ) {
+    // Shared memory for z (input array)
+    extern __shared__ float sharedZ[];
+
     // Index for output 
     // This is the thread index in its own block
     int j = threadIdx.x;
 
+    for (int i = j; i < len; i+= blockDim.x){
+        sharedZ[i] = z[i];
+    }
+    __syncthreads();
+
     if (j < len) {
         // Finding the max value
-        float max = z[0];
+        float max = sharedZ[0];
         for (int i = 1; i < len; i++) {
-            if (z[i] > max) max = z[i];
+            if (sharedZ[i] > max) max = sharedZ[i];
         }
 
         // Compute the exponent of this indexed value
-        float exp = expf(z[j] - max);
+        float exp = expf(sharedZ[j] - max);
 
         // Compute the sum 
         float sum = 0;
         for (int i = 0; i < len; i++) {
-            sum += expf(z[i] - max);
+            sum += expf(sharedZ[i] - max);
         }
 
         // Normalize
