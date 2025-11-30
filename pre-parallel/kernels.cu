@@ -175,13 +175,22 @@ __global__ void backPropKernel(
     int currLayerSize,
     int nextLayerSize
 ){
+    // Shared memory for the nextDelta vector, dynamic allocation
+    extern __shared__ float sharedNextDelta[];
+    
+    int tId = threadIdx.x;
     int j = blockIdx.x * blockDim.x + threadIdx.x;
+
+    for (int i = tId; i < nextLayerSize ; i+= blockDim.x){
+        sharedNextDelta[i] = nextDelta[i];
+    }
+    __syncthreads();
 
     if (j < currLayerSize){
         float err = 0;
 
         for (int k = 0; k < nextLayerSize; k++){
-            err += nextDelta[k]*nextWeights[j * nextLayerSize + k];
+            err += sharedNextDelta[k]*nextWeights[j * nextLayerSize + k];
         }
 
         output[j] = err * deviceDRelu(currLayerOutput[j]);

@@ -131,8 +131,8 @@ void train_model(MODEL* model) {
 
             // Backprop 
             firstBackPropKernel<<< (CLASSES+(blockSize-1))/blockSize, blockSize >>>(d_label, d_outa, d_delta3, CLASSES); 
-            backPropKernel<<< (H2+(blockSize-1))/blockSize, blockSize >>>(d_h2a, d_W3, d_delta3, d_delta2, H2, CLASSES); 
-            backPropKernel<<< (H1+(blockSize-1))/blockSize, blockSize >>>(d_h1a, d_W2, d_delta2, d_delta1, H1, H2); 
+            backPropKernel<<< (H2+(blockSize-1))/blockSize, blockSize, CLASSES*sizeof(float)>>>(d_h2a, d_W3, d_delta3, d_delta2, H2, CLASSES); 
+            backPropKernel<<< (H1+(blockSize-1))/blockSize, blockSize, H2*sizeof(float)>>>(d_h1a, d_W2, d_delta2, d_delta1, H1, H2); 
 
             // Update
             dim3 gridW3( (H2+15)/16, (CLASSES+15)/16 );
