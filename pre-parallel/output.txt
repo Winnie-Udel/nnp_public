@@ -1,0 +1,10 @@
+Script started on Mon Dec  1 19:30:24 2025
+[winnie@r2v02 pre-parallel]$ srun ./nnp train
+Epoch 0, Loss=0.2435
+Epoch 1, Loss=0.0938
+Epoch 2, Loss=0.0630
+Epoch 3, Loss=0.0454
+Epoch 4, Loss=0.0359
+Trained model in 35 seconds
+[winnie@r2v02 pre-parallel]$ exit
+exit
