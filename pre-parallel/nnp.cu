@@ -114,7 +114,7 @@ void train_model(MODEL* model) {
             // Forward
             forwardKernel<<< (H1+(blockSize-1))/blockSize, blockSize, SIZE*sizeof(float)>>>(d_input, d_W1, d_b1, d_h1, SIZE, H1, 1); 
             cudaMemcpy(d_h1a, d_h1, H1*sizeof(float), cudaMemcpyDeviceToDevice);
-            forwardKernel<<< (H2+(blockSize-1))/blockSize, blockSize H1*sizeof(float)>>>(d_h1a, d_W2, d_b2, d_h2, H1, H2, 1);
+            forwardKernel<<< (H2+(blockSize-1))/blockSize, blockSize, H1*sizeof(float)>>>(d_h1a, d_W2, d_b2, d_h2, H1, H2, 1);
             cudaMemcpy(d_h2a, d_h2, H2*sizeof(float), cudaMemcpyDeviceToDevice);
             forwardKernel<<< (CLASSES+(blockSize-1))/blockSize, blockSize, H2*sizeof(float)>>>(d_h2a, d_W3, d_b3, d_out, H2, CLASSES, 0);
             softMaxKernel<<<1, CLASSES, CLASSES*sizeof(float)>>>(d_out, d_outa, CLASSES); 
